@@ -39,7 +39,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --platform=linux --arch=x64
+        run: |
+          npm install --ignore-scripts
+          npm rebuild sharp
+
 
       - name: Run linters
         run: npm run lint:all
@@ -65,7 +68,11 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --platform=linux --arch=x64
+        - name: Install dependencies
+          run: |
+            npm install --ignore-scripts
+            npm rebuild sharp
+
 
       - name: Build site with 11ty
         env:
