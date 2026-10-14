@@ -1,0 +1,108 @@
+name: Deploy Knowledge Base
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '.gitignore'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'LICENSE'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  issues: write
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linters
+        run: npm run lint:all
+
+      - name: Run URL checker script
+        run: node script/url-checker.js -t ${{ vars.URL_CHECKER_TIMEOUT || 5000 }}
+
+  build:
+    name: Build Static Site
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site with 11ty
+        env:
+          PATH_PREFIX: /${{ github.event.repository.name }}/
+        run: npm run prod
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Create Deployment Status Issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_STATUS: ${{ job.status }}
+        run: |
+          TODAY=$(date +%Y-%m-%d)
+          
+          if [ "$DEPLOY_STATUS" == "success" ]; then
+            STATUS="succeeded"
+          else
+            STATUS="failed"
+          fi
+
+          gh issue create \
+            --title "$TODAY - Deployment: $STATUS" \
+            --body "URL: ${{ steps.deployment.outputs.page_url }}"
