@@ -39,11 +39,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          npm ci
-        env:
-          # Allows pagefind and other packages to authenticate requests if needed
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm ci
 
       - name: Run linters
         run: npm run lint:all
@@ -69,14 +65,12 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          npm ci
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm ci
 
       - name: Build site with 11ty
         env:
           PATH_PREFIX: /${{ github.event.repository.name }}/
+          PAGEFIND_IGNORE: true
         run: npm run prod
 
       - name: Upload Pages artifact
