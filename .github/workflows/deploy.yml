@@ -68,10 +68,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        - name: Install dependencies
-          run: |
-            npm install --ignore-scripts
-            npm rebuild sharp
+        run: |
+          npm install --ignore-scripts
+          npm rebuild sharp
 
 
       - name: Build site with 11ty
